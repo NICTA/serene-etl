@@ -1,0 +1,163 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.25">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>EXECUTOR_MEMORY</name>
+          <description>Memory per executor (same as a container)</description>
+          <defaultValue>8G</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>NUM_EXECUTORS</name>
+          <description>This should be set just under the number of solr cores running on your cluster (eg 10 machines, 8 cores per machine = 80 cores)</description>
+          <defaultValue>50</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>EXECUTOR_CORES</name>
+          <description>The number of executor cores / executor</description>
+          <defaultValue>1</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>DRIVER_MEMORY</name>
+          <description>Driver memory</description>
+          <defaultValue>32G</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>ADD_DRV_JAVA_OPTS</name>
+          <description>Add other specific java options for your job e.g. -Dspark.driver.maxResultSize=8G</description>
+          <defaultValue></defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>MODULE</name>
+          <description>Module to process data</description>
+          <defaultValue>1</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>CID</name>
+          <description>Catalog ID</description>
+          <defaultValue>1</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>PARTITIONS</name>
+          <description>Leave it at zero to try to figure it out, otherwise specify partitions </description>
+          <defaultValue>0</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>DEBUG</name>
+          <description>Enable debug</description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string></string>
+              <string>--debug</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>HDFS</name>
+          <description>save files to HDFS in addition to SOLR</description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string></string>
+              <string>--hdfs</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>SOLR_MASTER</name>
+          <description>Solr master to call commit at the end of the job (blank to process but not index)</description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>--solr http://{{ solr_endpoint }}/solr/{{ serene_collection }}/</string>
+              <string> </string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>true</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command># Unlike the other runners, this requires serene deployment across the entire cluster
+
+SSH_KEY_PATH=&quot;{{ ssh_key }}&quot;
+HOSTS_FILE=&quot;{{ hosts_file }}&quot;
+
+ENVIRONMENT={{ build_env }}
+PIP=${ENVIRONMENT}/bin/pip
+
+DEPENDENCIES=&quot;{{ extra_dependencies}}&quot;
+
+# Unfortunately, I haven&apos;t gotten &quot;test -d ${ENVIRONMENT}&quot; working in the command before virtualenv... 
+commands=(
+        &quot;virtualenv ${ENVIRONMENT} --quiet&quot;
+        &quot;${PIP} install pip --upgrade --quiet&quot;
+        &quot;${PIP} install ${DEPENDENCIES} --upgrade&quot;
+)
+
+for command in &quot;${commands[@]}&quot;; do
+        # Install it on all the hosts specified by HOSTS_FILE
+        mussh -i ${SSH_KEY_PATH} -H ${HOSTS_FILE} -m0 -c &quot;${command}&quot;
+        # Install it locally too.
+        ${command}
+done
+</command>
+    </hudson.tasks.Shell>
+    <hudson.tasks.Shell>
+      <command>#Extract files from archive into working directory
+rm -rf ./catalogue/ ./loaded/ ./indexed/
+
+git clone {{ metadata_catalogue }}
+git clone {{ metadata_loaded }}
+git clone {{ metadata_indexed}}
+</command>
+    </hudson.tasks.Shell>
+    <hudson.tasks.Shell>
+      <command>ENVIRONMENT=&quot;{{ build_env }}&quot;
+
+export SPARK_DIST_CLASSPATH=`hadoop classpath`:$SPARK_DIST_CLASSPATH
+export SPARK_HOME=/opt/spark-2.1.0-bin-hadoop2.6
+export HADOOP_HOME=/opt/cloudera/parcels/CDH/lib/hadoop
+export BIN_DIR=/opt/cloudera/parcels/CDH/bin
+export LIB_DIR=/opt/cloudera/parcels/CDH/lib
+. /opt/cloudera/parcels/CDH/lib/bigtop-utils/bigtop-detect-javahome
+source $SPARK_HOME/bin/load-spark-env.sh
+export PYTHONPATH=$SPARK_HOME/python/lib/py4j-0.10.1-src.zip:$SPARK_HOME/python/:$PYTHONPATH
+
+# Configure Spark to use the virtual environment
+export DEFAULT_PYTHON=${ENVIRONMENT}/bin/python
+export PYSPARK_DRIVER_PYTHON=${ENVIRONMENT}/bin/python
+export PYSPARK_PYTHON=${ENVIRONMENT}/bin/python
+
+export PYSPARK_DRIVER_PYTHON_OPTS
+source /opt/cloudera/parcels/CDH/lib/spark/conf/spark-env.sh
+export LD_LIBRARY_PATH=/usr/local/lib/:$LD_LIBRARY_PATH
+
+# Create the driver
+cat &gt; index_driver.py &lt;&lt; EOF
+from serene_index import index
+index.main()
+EOF
+
+spark-submit --verbose --driver-java-options &quot;-Dspark.memory.useLegacyMode=false $ADD_DRV_JAVA_OPTS&quot; --name $JOB_NAME-$BUILD_NUMBER \
+--master yarn --driver-memory $DRIVER_MEMORY --num-executors $NUM_EXECUTORS --executor-memory $EXECUTOR_MEMORY --executor-cores $EXECUTOR_CORES \
+&quot;index_driver.py&quot; spark -b &quot;/data&quot; -c $CID -m $MODULE --partitions $PARTITIONS $DEBUG $SOLR_MASTER $HDFS</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers/>
+</project>

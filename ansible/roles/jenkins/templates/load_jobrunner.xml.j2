@@ -1,0 +1,94 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>template for running loading jobs on the cluster</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.25">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>BASE</name>
+          <description>Base path where source data is accesable from on the filesystem</description>
+          <defaultValue>{{ base_source_path }}</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>CID</name>
+          <description>Catalogue ID (determines path to scan for input files underneath the basepath)</description>
+          <defaultValue></defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>FILTERS</name>
+          <description>Additional filters to apply to file selection</description>
+          <defaultValue></defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>PROCESSOR</name>
+          <description>generic</description>
+          <defaultValue>generic</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>ARGUMENTS</name>
+          <description>Arguments specific to the processor (e.g. adding custom separators)</description>
+          <defaultValue>{}</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>DEBUG</name>
+          <description></description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string></string>
+              <string>--debug</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>true</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command># This command should be copyable to all runners to initialise the entire environment
+
+ENVIRONMENT=&quot;.pyenv&quot;
+PIP=&quot;${ENVIRONMENT}/bin/pip&quot;
+
+DEPENDENCIES=&quot;{{ extra_dependencies }}&quot;
+
+if [ ! -d ${ENVIRONMENT} ] ; then
+    virtualenv ${ENVIRONMENT} --quiet
+    ${PIP} install pip --upgrade --quiet
+fi 
+
+${PIP} install ${DEPENDENCIES} --upgrade
+</command>
+    </hudson.tasks.Shell>
+    <hudson.tasks.Shell>
+      <command>ENVIRONMENT=&quot;.pyenv&quot;
+
+rm -rf ./loaded/ ./metadata 
+git clone {{ metadata_metadata }}
+git clone {{ metadata_loaded }}
+
+source ${ENVIRONMENT}/bin/activate
+serene_load --base &quot;$BASE&quot; --cid &quot;$CID&quot; --processor &quot;$PROCESSOR&quot; --arguments &quot;$ARGUMENTS&quot; $FILTERS $DEBUG
+
+cd loaded
+git add .
+git commit -m &quot;automated load job $BUILD_TAG&quot; || true
+git pull
+git push origin master</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers/>
+</project>

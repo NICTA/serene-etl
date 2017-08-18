@@ -1,0 +1,6 @@
+serene-schema
+serene-metadata
+pysolr
+postal
+mock
+chardet

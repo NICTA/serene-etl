@@ -1,0 +1,47 @@
+---
+
+- name: install system pre-requisites
+  yum: name={{item}}
+  with_items:
+    - python-libarchive
+    - p7zip
+
+- name: install jenkins
+  yum: name=jenkins state=installed
+
+- name: hdfs owns jenkins files
+  file: dest=/var/lib/jenkins state=directory recurse=true owner=hdfs group=hdfs
+
+- name: hdfs owns jenkins cache too
+  file: dest=/var/cache/jenkins state=directory recurse=true owner=hdfs group=hdfs
+
+- name: hdfs owns jenkins log
+  file: dest=/var/log/jenkins state=directory recurse=true owner=hdfs group=hdfs
+
+- name: set jenkins user
+  lineinfile: dest=/etc/sysconfig/jenkins line='JENKINS_USER="hdfs"' state=present
+
+- name: create jobs
+  file: dest=/var/lib/jenkins/jobs/{{item}} state=directory owner=hdfs group=hdfs
+  with_items: build_jobs
+
+- name: copy config for jobs
+  template: src=build_config.xml.j2 dest=/var/lib/jenkins/jobs/{{item}}/config.xml owner=hdfs group=hdfs
+  with_items: build_jobs
+
+- file: dest=/var/lib/jenkins/jobs/serene_index_jobrunner state=directory owner=hdfs group=hdfs
+- template: src=index_jobrunner.xml.j2 dest=/var/lib/jenkins/jobs/serene_index_jobrunner/config.xml owner=hdfs group=hdfs
+
+- file: dest=/var/lib/jenkins/jobs/serene_load_jobrunner state=directory owner=hdfs group=hdfs
+- template: src=load_jobrunner.xml.j2 dest=/var/lib/jenkins/jobs/serene_load_jobrunner/config.xml owner=hdfs group=hdfs
+
+- file: dest=/var/lib/jenkins/jobs/serene_scan_jobrunner state=directory owner=hdfs group=hdfs
+- template: src=scan_jobrunner.xml.j2 dest=/var/lib/jenkins/jobs/serene_scan_jobrunner/config.xml owner=hdfs group=hdfs
+
+- name: start jenkins
+  service: name=jenkins state=restarted enabled=yes
+
+
+
+
+

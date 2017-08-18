@@ -1,0 +1,8 @@
+include README.md
+include LICENSE.txt
+include VERSION
+include requirements.txt
+
+recursive-include solr_config *
+
+include serene_schema/data/serene_model.avsc

@@ -1,0 +1,11 @@
+[cdh-master]
+cdhmgt[01:03]
+
+[cdh-worker]
+cdhsvr01 rack=1
+cdhsvr02 rack=2
+cdhsvr03 rack=1
+cdhsvr04 rack=2
+
+[jenkins-master]
+cdhmgt02

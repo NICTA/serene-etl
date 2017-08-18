@@ -1,0 +1,164 @@
+
+- name: Backup existing solr indexes if required
+  copy: src="{{ root_dir }}/{{ item.0.dir }}/{{ item.1 }}" dest=/mnt/ssd1/
+  with_subelements:
+    - layout
+    - ports
+  tags:
+    - backup
+
+
+- name: Install solr dependencies
+  yum: name={{ item }} state=present
+  with_items:
+    - lsof
+    - python-httplib2
+
+- name: create solr user and group
+  user: name=solr group=solr system=yes home=/var/solr shell=/sbin/nologin
+
+- name: remove previous solr data
+  file: path="{{ root_dir }}/{{ item.0.dir }}/{{ item.1 }}" state=absent
+  when: smite
+  with_subelements:
+   - layout
+   - ports
+
+- name: Create solr data directories
+  file: path="{{ root_dir }}/{{ item.0.dir }}/{{ item.1 }}" state=directory owner=solr group=solr
+  with_subelements:
+    - layout
+    - ports
+
+- name: remove old install
+  file: dest=/opt/solr-{{solr_version}} state=absent
+
+- name: remove old install
+  file: dest=/opt/solr state=absent
+
+- name: remove old install
+  file: dest=/opt/solr-{{ solr_version }}.tgz state=absent
+
+- name: kill all solr processes
+  command: killall -u solr
+  ignore_errors: yes
+
+- name: create solr install
+  file: dest=/opt/solr-{{ solr_version }} state=directory owner=solr group=solr
+
+- name: get solr
+  get_url: url=http://{{ dist_server }}/sw/solr-{{ solr_version }}.tgz dest=/opt owner=solr group=solr
+
+- name: unpack solr
+  command: tar -C /opt -vxzf /opt/solr-{{solr_version}}.tgz
+
+- name: symlink for solr
+  file: src=/opt/solr-{{ solr_version }} dest=/opt/solr state=link
+
+- name: copy solr.xml template
+  template: src=solr.xml.j2 dest=/opt/solr/server/solr/solr.xml
+
+# install instances
+- include: instance.yml data={{dir}} port={{item}}
+  with_subelements:
+    - layout
+    - ports
+
+- name: copy logging template
+  template: src=log4j.properties.j2 dest=/opt/solr/server/resources/log4j.properties
+
+- name: fix permissions
+  file: path=/var/solr state=directory recurse=yes owner=solr group=solr
+
+- name: fix permissions
+  file: path="{{ root_dir }}/{{ item.dir }}" state=directory recurse=yes owner=solr group=solr
+  with_items: layout
+
+- name: reload systemd
+  command: systemctl daemon-reload
+
+#
+# SOLR now installed... final setup creates the collection...
+#
+
+- name: delete existing collection
+  uri: url="http://localhost:8983/solr/admin/collections?action=DELETE&name={{collection}}"
+  when: inventory_hostname == groups['cdh-worker'][0]
+  ignore_errors: yes
+  tags:
+    - final_setup
+
+
+- name: start solr on rack 1
+  service: name=solr{{ item.1 }} state=started enabled=yes
+  with_subelements:
+    - layout
+    - ports
+  when: rack==1
+  tags:
+    - final_setup
+
+- name: delete existing collection
+  uri: url="http://localhost:8983/solr/admin/collections?action=DELETE&name={{collection}}"
+  when: inventory_hostname == groups['cdh-worker'][0]
+  ignore_errors: yes
+  tags:
+    - final_setup
+
+
+- name: ensure rack 2 is stopped
+  service: name=solr{{ item.1 }} state=stopped
+  with_subelements:
+    - layout
+    - ports
+  when: rack==2
+  tags:
+    - final_setup
+
+- name: create new collection
+  uri: url="http://localhost:8983/solr/admin/collections?action=CREATE&name={{collection}}&numShards={{ num_shards }}&replicationFactor=1"
+  when: inventory_hostname == groups['cdh-worker'][0]
+  tags:
+    - final_setup
+
+- name: start solr on rack 2
+  service: name=solr{{ item.1 }} state=started enabled=yes
+  with_subelements:
+    - layout
+    - ports
+  when: rack==2
+  tags:
+    - final_setup
+
+- name: increase replication factor
+  uri: url="http://localhost:8983/solr/admin/collections?action=MODIFYCOLLECTION&collection={{collection}}&autoAddReplicas=1&replicationFactor=2"
+  when: inventory_hostname == groups['cdh-worker'][0]
+  tags:
+    - final_setup
+
+- shell: "echo {{rack}}"
+  register: host_rack
+  tags:
+    - final_setup
+    - create_replicas
+
+- solr: hosts="{{ hostvars }}" target_rack=2 group=cdh-worker collection="{{collection}}"
+  when: rack==2
+  tags:
+    - final_setup
+    - create_replicas
+
+- name: restart solr on both racks
+  service: name=solr{{ item.1 }} state=restarted enabled=yes
+  with_subelements:
+    - layout
+    - ports
+  when: reboot_all
+  tags:
+    - reboot_all
+
+
+
+
+
+

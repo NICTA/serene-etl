@@ -1,0 +1,6 @@
+serene-metadata
+serene-index
+serene-load
+serene-proxy
+serene-schema
+serene-solr-config

@@ -1,0 +1,6 @@
+include README.md
+include LICENSE.txt
+include VERSION
+include requirements.txt
+
+recursive-include serene_solr_config/data *

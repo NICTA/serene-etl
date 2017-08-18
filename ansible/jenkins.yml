@@ -1,0 +1,34 @@
+---
+
+- hosts: jenkins-master
+  user: root
+  roles:
+    - jenkins
+  vars:
+    # build jobs
+    - git_host: github.com
+    - git_path: serene
+    - pypi_deployment_server: cdhmgt01
+    - pypi_deployment_path: /var/www/html/sw/pypi/internal
+    - build_jobs:
+      - serene_index
+      - serene_load
+      - serene_metadata
+      - serene_platform
+      - serene_proxy
+      - serene_schema
+      - serene_solr_config
+      - pyairports
+    # Index
+    - solr_endpoint: cdhsvr02:8983
+    - serene_collection: serene
+    - hosts_file: /var/lib/hadoop-hdfs/serene_hosts.txt
+    - build_env: /var/lib/hadoop-hdfs/.serene_environment
+    - extra_dependencies: serene_platform serene_extra_modules
+    - ssh_key: /var/lib/hadoop-hdfs/.ssh/id_rsa_jenkins
+    - metadata_catalogue: git@github.com:data61/serene-catalogue.git
+    - metadata_loaded: git@github.com:data61/serene-loaded.git
+    - metadata_indexed: git@github.com:data61/serene-indexed.git
+    # Load
+    - base_source_path: /var/lib/hadoop-hdfs/data/
+    - metadata_metadata: git@github.com::data61/serene-metadata.git

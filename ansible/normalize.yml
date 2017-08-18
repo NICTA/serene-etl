@@ -1,0 +1,14 @@
+---
+
+
+- hosts: all
+  user: root
+  #become: yes
+  #become_user: root
+  gather_facts: false
+  roles:
+    - normalize
+  vars:
+    - dist_server: cdhmgt02
+
+

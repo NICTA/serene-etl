@@ -1,0 +1,5 @@
+chardet
+serene-metadata
+python-libarchive
+python-magic
+backports.csv

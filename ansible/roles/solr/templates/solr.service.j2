@@ -1,0 +1,20 @@
+# {{ansible_managed}}
+
+[Unit]
+Description=Apache Solr {{ data }}-{{ port }}
+After=syslog.target network.target remote-fs.target nss-lookup.target
+
+[Service]
+Type=forking
+Restart=always
+PIDFile=/var/solr{{ port }}/solr-{{ port }}.pid
+ExecStart=/etc/init.d/solr{{ port }} start
+ExecReload=/etc/init.d/solr{{ port }} restart
+ExecStop=/etc/init.d/solr{{ port }} stop
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+
+
+

@@ -1,0 +1,6 @@
+pycountry==1.20
+pyairports>=2.1.1
+phonenumbers
+pytz
+repoze.lru
+validate_email

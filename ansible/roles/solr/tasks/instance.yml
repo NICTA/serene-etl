@@ -1,0 +1,28 @@
+
+# Setup solr init.d scripts
+
+- name: "{{data}}/{{port}} remove old init.d script"
+  file: dest=/etc/init.d/solr{{ port }} state=absent
+
+- name: "{{data}}/{{port}} copy init.d script"
+  template: src=solr.initd.j2 dest=/etc/init.d/solr{{ port }} owner=root group=root mode=0774
+
+- name: "{{data}}/{{port}} copy config options"
+  template: src=solr.in.sh.j2 dest=/etc/default/solr{{ port }}.in.sh owner=root group=root mode=0644
+
+- name: "{{data}}/{{port}} create logs directory"
+  file: path="{{ root_dir }}/{{ data }}/{{ port }}/logs" state=directory owner=solr group=solr
+
+- name: "{{data}}/{{port}} create pid directory"
+  file: path="/var/solr{{ port }}" state=directory owner=solr group=solr
+
+- name: "{{data}}/{{port}} fix permissions"
+  file: path="{{ root_dir }}/{{ data }}/{{ port }}" state=directory owner=solr group=solr
+
+- name: "{{data}}/{{port}} link solr.xml"
+  file: src=/opt/solr/server/solr/solr.xml dest="{{ root_dir }}/{{ data }}/{{ port }}/solr.xml" state=link
+
+- name: "{{data}}/{{port}} install systemd script"
+  template: src=solr.service.j2 dest=/usr/lib/systemd/system/solr{{ port }}.service
+
+

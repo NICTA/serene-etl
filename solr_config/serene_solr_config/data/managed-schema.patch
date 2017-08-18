@@ -1,0 +1,77 @@
+48c48
+< <schema name="serene" version="1.6">
+---
+> <schema name="example-data-driven-schema" version="1.6">
+122d121
+< <!--
+126c125
+< -->
+---
+> 
+134d132
+< <!--
+137,140c135,136
+< -->
+<     <dynamicField name="*_s"  type="string" indexed="true"   stored="false" />
+<     <dynamicField name="*_ss" type="text_general" indexed="true"  stored="false" multiValued="true"/>
+< <!--
+---
+>     <dynamicField name="*_s"  type="string"  indexed="true"  stored="true" />
+>     <dynamicField name="*_ss" type="strings"  indexed="true"  stored="true"/>
+151d146
+< -->
+154d148
+< <!--
+156d149
+< -->
+158,161c151,152
+<     <dynamicField name="*_dt"  type="date"    indexed="true"  stored="false" />
+<     <dynamicField name="*_dts" type="date"    indexed="true"  stored="false" multiValued="true" />
+<     <dynamicField name="*.geoloc" type="location_rpt" indexed="true" stored="false" multiValued="true" />
+< <!--
+---
+>     <dynamicField name="*_dt"  type="date"    indexed="true"  stored="true"/>
+>     <dynamicField name="*_dts" type="date"    indexed="true"  stored="true" multiValued="true"/>
+164d154
+< -->
+167d156
+< <!--
+185d173
+< -->
+CUSTOM_FIELDS_INSERTED_HERE
+201,207d188
+<     <field name="indexed" type="date" indexed="true" stored="false" default="NOW" multiValued="false"/>
+<     <field name="object_types" type="string" indexed="true" stored="false" required="true" multiValued="true" useDocValuesAsStored="false" docValues="true" />
+<     <field name="link_types" type="string" indexed="true" stored="false" required="false" multiValued="true"  useDocValuesAsStored="false" docValues="true" />
+<     <field name="attr_types" type="string" indexed="true" stored="false" required="false" multiValued="true"  useDocValuesAsStored="false" docValues="true" />
+<     <field name="data" type="string" indexed="false" stored="true" required="true" multiValued="false" />
+<     <field name="raw" type="string" indexed="false" stored="true" required="false" multiValued="false" />
+<     <field name="geoloc" type="location_rpt" indexed="true" stored="false" required="false" multiValued="true" />
+236,246d195
+<     <field name="_text_" type="text_general" indexed="true" stored="false" multiValued="true"/>
+<     <copyField source="src_file_*" dest="_text_"/>
+<     <copyField source="*_s" dest="_text_"/>
+<     <copyField source="*_ss" dest="_text_"/>
+<     <copyField source="*_l" dest="_text_"/>
+<     <copyField source="*_ls" dest="_text_"/>
+<     <copyField source="*_i" dest="_text_"/>
+<     <copyField source="*_is" dest="_text_"/>
+<     <copyField source="*_dts" dest="_text_"/>
+<     <copyField source="raw" dest="_text_"/>
+< 
+259,260c208,209
+<     <fieldType name="string" class="solr.StrField" sortMissingLast="true" />
+<     <fieldType name="strings" class="solr.StrField" sortMissingLast="true" multiValued="true" />
+---
+>     <fieldType name="string" class="solr.StrField" sortMissingLast="true" docValues="true" />
+>     <fieldType name="strings" class="solr.StrField" sortMissingLast="true" multiValued="true" docValues="true" />
+341,342c290,291
+<     <fieldType name="date" class="solr.DateRangeField" />
+<     <fieldType name="dates" class="solr.DateRangeField" multiValued="true"/>
+---
+>     <fieldType name="date" class="solr.TrieDateField" docValues="true" precisionStep="0" positionIncrementGap="0"/>
+>     <fieldType name="dates" class="solr.TrieDateField" docValues="true" precisionStep="0" positionIncrementGap="0" multiValued="true"/>
+412d360
+< <!--
+414d361
+< -->

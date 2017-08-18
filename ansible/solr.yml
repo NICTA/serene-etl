@@ -1,0 +1,29 @@
+---
+
+- hosts: cdh-worker
+  user: root
+  #become: yes
+  #become_user: root
+  gather_facts: false
+  roles:
+    - solr
+  vars:
+    - solr_version : '6.0.0'
+    - solr_port: 8983
+    - solr_name : 'solr-{{ solr_version }}'
+    - solr_archive : '{{ solr_name }}.tgz'
+    - domain: domain.local
+    - solr_version: 6.0.0
+    - dist_server: cdhmgt01
+    - logging_servers:
+        - cdhmgt03.domain.local
+    - smite: false
+    - root_dir: /data
+    - collection: serene
+    # assuming a replication factor of 2
+    # shards is node_count / 2 * number of cores per node
+    # the layout below specifies 6 cores per node. So with 4 nodes we get (4 / 2 * 6) 12 shards
+    - num_shards: 12
+    - layout:
+        - { dir: data1, ports: [ 8983, 8986, 8989 ] }
+        - { dir: data2, ports: [ 8984, 8987, 8990 ] }

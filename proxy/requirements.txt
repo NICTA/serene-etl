@@ -1,0 +1,4 @@
+serene_metadata
+Twisted==15.5.0
+python-ldap>=2.4.25
+pykerberos

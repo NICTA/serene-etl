@@ -1,0 +1,135 @@
+---
+
+- name: install system pre-requisites
+  yum: name={{item}}
+  with_items:
+    - snappy
+    - snappy-devel
+    - autoconf
+    - automake
+    - libtool
+    - pkgconfig
+    - python-magic
+    - git
+    - python-devel
+    - python-pip
+    - python-setuptools
+    - python-lxml
+    - numpy
+  tags:
+    - libraries
+
+- pip: name={{ item }}
+  with_items
+    - http://{{ dist_server }}/sw/pypi/pypi/nose-1.3.7-py2-none-any.whl
+    - http://{{ dist_server }}/sw/pypi/pypi/pytz-2015.7-py2.py3-none-any.whl
+    - http://{{ dist_server }}/sw/pypi/pypi/Unidecode-0.04.19.tar.gz
+  tags:
+    - libraries
+
+
+- name: create install directory for libpostal
+  file: dest=/opt/libpostal state=directory
+
+- name: create temp working directory for libpostal
+  file: dest=/tmp/libpostal/working state=directory
+
+- name: extract libpostal
+  unarchive: src=libpostal-master.zip dest=/tmp/libpostal
+
+- name: download libpostal data files for libpostal
+  get_url: url=http://{{ dist_server }}/libpostal/{{ item }} dest=/opt/libpostal/{{ item }} mode=0644
+  with_items:
+    - geodb.tar.gz
+    - language_classifier.tar.gz
+    - libpostal_data.tar.gz
+    - parser.tar.gz
+
+# parser.tar.gz should be around 190 MB not smaller (make sure parser.tar.gz and parser.tar.gz.1 arent mixed up)
+
+- name: extract libpostal datafiles
+  unarchive: src=/opt/libpostal/{{ item }} dest=/opt/libpostal/ copy=no
+  with_items:
+    - geodb.tar.gz
+    - language_classifier.tar.gz
+    - libpostal_data.tar.gz
+    - parser.tar.gz
+
+- name: remove libpostal datafiles
+  file: dest=/opt/libpostal/{{ item }} state=absent
+  with_items:
+    - geodb.tar.gz
+    - language_classifier.tar.gz
+    - libpostal_data.tar.gz
+    - parser.tar.gz
+
+- name: configure libpostal
+  shell: ./bootstrap.sh chdir=/tmp/libpostal/libpostal-master
+  args:
+    creates: /usr/local/lib/libpostal.so
+
+#Note that libpostal adds libpostal to the datadir we supply - so /opt turns into /opt/libpostal
+- name: configure with data dir
+  shell: ./configure --datadir=/opt
+  args:
+    chdir: /tmp/libpostal/libpostal-master
+    creates: /usr/local/lib/libpostal.so
+
+- name: make libpostal
+  shell: make
+  args:
+    chdir: /tmp/libpostal/libpostal-master
+    creates: /usr/local/lib/libpostal.so
+
+- name: install libpostal
+  shell: make install
+  args:
+    chdir: /tmp/libpostal/libpostal-master
+    creates: /usr/local/lib/libpostal.so
+
+- name: remove libpostal working files
+  file: dest=/tmp/libpostal state=absent
+
+- name: ldconfig
+  shell: ldconfig
+
+- name: fix libpostal ownership
+  file: dest=/opt/libpostal owner=root group=root mode=655 recurse=true
+
+# we have a problem where spark seems to override LD_LIBRARY_PATH and so libpostal fails when being called from spark
+# this is a very hacky solution....
+
+- name: spark overrides LD_LIBRARY_PATH by default..
+  lineinfile: dest=/etc/spark/conf/spark-env.sh regexp="^export LD_LIBRARY_PATH=/usr/local/lib" line="export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib/"
+
+#setup LD EXPORT
+- name: make sure LD_EXPORT works for libpostal
+  copy: src=libpostal_export.sh dest=/etc/profile.d/
+
+- name: link library into spark directory
+  file: src=/usr/local/lib/{{item}} dest=/opt/cloudera/parcels/CDH/lib/hadoop/lib/native/{{item}} state=link
+  with_items:
+    - libpostal.a
+    - libpostal.la
+    - libpostal.so
+    - libpostal.so.0
+    - libpostal.so.0.0.0
+  tags:
+   - linking
+
+# and now we continue our regular programming
+
+# Pypostal
+
+- file: dest=/tmp/pypostal state=directory
+
+- name: extract pypostal
+  unarchive: src=pypostal-master.zip dest=/tmp/pypostal
+
+- name: setup pypostal
+  command: python setup.py install chdir=/tmp/pypostal/pypostal-master
+
+- name: remove pypostal working files
+  file: dest=/tmp/pypostal state=absent
+
+

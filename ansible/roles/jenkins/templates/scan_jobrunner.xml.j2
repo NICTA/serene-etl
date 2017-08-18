@@ -1,0 +1,87 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>template for running loading jobs on the cluster</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.25">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>BASE</name>
+          <description>Base path where source data is accesable from on the filesystem</description>
+          <defaultValue>{{ base_source_path }}</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SUBDIR</name>
+          <description>Catalogue ID (determines path to scan for input files underneath the basepath)</description>
+          <defaultValue>00000000</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>UPDATE</name>
+          <description>Only scan files we haven&apos;t seen before...</description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string></string>
+              <string>--update</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>VERBOSE</name>
+          <description></description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string></string>
+              <string>--verbose</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>true</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command># This command should be copyable to all runners to initialise the entire environment
+
+ENVIRONMENT=&quot;.pyenv&quot;
+PIP=&quot;${ENVIRONMENT}/bin/pip&quot;
+
+DEPENDENCIES=&quot;{{ extra_dependencies }}&quot;
+
+if [ ! -d ${ENVIRONMENT} ] ; then
+    virtualenv ${ENVIRONMENT} --quiet
+    ${PIP} install pip --upgrade --quiet
+fi 
+
+${PIP} install ${DEPENDENCIES} --upgrade
+</command>
+    </hudson.tasks.Shell>
+    <hudson.tasks.Shell>
+      <command>ENVIRONMENT=&quot;.pyenv&quot;
+
+rm -rf ./metadata/
+git clone {{ metadata_metadata }}
+
+source ${ENVIRONMENT}/bin/activate
+serene_scan --base &quot;$BASE&quot; --subdir &quot;$SUBDIR&quot; $UPDATE $VERBOSE
+
+cd metadata
+git add .
+git commit -m &quot;automated scan job $BUILD_TAG&quot; || true
+git push origin master</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers/>
+</project>
